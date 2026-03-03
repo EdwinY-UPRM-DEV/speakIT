@@ -3,367 +3,404 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SpeakIt — Local TTS</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <title>SpeakIt — Live Reader</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500&display=swap" rel="stylesheet"/>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg: #0d0d0d;
-      --surface: #161616;
-      --border: #2a2a2a;
-      --accent: #e8ff47;
-      --text: #f0ede6;
-      --muted: #666;
+      --bg: #f7f4ee;
+      --surface: #ffffff;
+      --border: #e2ddd5;
+      --accent: #c84b2f;
+      --accent-light: rgba(200,75,47,0.08);
+      --text: #1a1814;
+      --muted: #8a8478;
+      --done: #bbb5aa;
     }
     body {
       background: var(--bg);
       color: var(--text);
-      font-family: 'DM Mono', monospace;
+      font-family: 'Instrument Sans', sans-serif;
       min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 2rem;
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      grid-template-rows: 100vh;
     }
-    body::before {
-      content: '';
-      position: fixed; inset: 0;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
-      background-size: 200px;
-      pointer-events: none;
-      z-index: 0;
-      opacity: 0.6;
-    }
-    .container {
-      position: relative; z-index: 1;
-      width: 100%; max-width: 680px;
-      animation: fadeUp 0.6s ease both;
-    }
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(24px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    header { margin-bottom: 3rem; }
-    .logo {
-      font-family: 'DM Serif Display', serif;
-      font-size: clamp(2.4rem, 6vw, 3.6rem);
-      color: var(--accent);
-      letter-spacing: -0.02em;
-      line-height: 1;
-    }
-    .logo span { font-style: italic; color: var(--text); }
-    .tagline {
-      margin-top: 0.5rem; color: var(--muted);
-      font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase;
-    }
-    .card {
+    /* PANEL */
+    .panel {
       background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 2rem;
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      padding: 1.75rem 1.5rem;
+      overflow-y: auto;
+      position: sticky; top: 0; height: 100vh;
     }
+    .logo { font-family: 'Instrument Serif', serif; font-size: 1.8rem; letter-spacing: -0.02em; }
+    .logo em { color: var(--accent); font-style: italic; }
+    .tagline { font-size: 0.68rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 1.75rem; margin-top: 0.2rem; }
+
+    .upload-zone {
+      border: 2px dashed var(--border); border-radius: 8px;
+      padding: 1.5rem 1rem; text-align: center; cursor: pointer;
+      transition: border-color 0.2s, background 0.2s; margin-bottom: 1.25rem;
+      position: relative;
+    }
+    .upload-zone:hover, .upload-zone.dragover { border-color: var(--accent); background: var(--accent-light); }
+    .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .upload-icon { font-size: 1.75rem; margin-bottom: 0.35rem; }
+    .upload-zone p { font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
+    .upload-zone strong { color: var(--accent); }
+
+    .divider {
+      display: flex; align-items: center; gap: 0.6rem;
+      color: var(--muted); font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase;
+      margin-bottom: 1.25rem;
+    }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
     textarea {
-      width: 100%;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      color: var(--text);
-      font-family: 'DM Mono', monospace;
-      font-size: 0.9rem;
-      line-height: 1.7;
-      padding: 1rem;
-      resize: vertical;
-      min-height: 180px;
-      outline: none;
-      transition: border-color 0.2s;
+      width: 100%; background: #faf9f7; border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text);
+      font-family: 'Instrument Sans', sans-serif; font-size: 0.83rem;
+      line-height: 1.6; padding: 0.75rem; resize: none; height: 100px;
+      outline: none; transition: border-color 0.2s; margin-bottom: 1.25rem;
     }
     textarea:focus { border-color: var(--accent); }
     textarea::placeholder { color: var(--muted); }
-    .char-count { font-size: 0.65rem; color: var(--muted); text-align: right; margin-top: 0.4rem; }
 
-    .controls {
-      margin-top: 1.5rem;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem;
-    }
-    .control-group { display: flex; flex-direction: column; gap: 0.4rem; }
-    label { font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
-    input[type="range"] { width: 100%; accent-color: var(--accent); }
-    .range-val { font-size: 0.7rem; color: var(--accent); font-weight: 500; }
+    .label { font-size: 0.63rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.4rem; display: flex; justify-content: space-between; }
+    .label span { color: var(--accent); font-weight: 500; }
+
     select {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      color: var(--text);
-      font-family: 'DM Mono', monospace;
-      font-size: 0.8rem;
-      padding: 0.5rem 0.6rem;
-      border-radius: 4px;
-      outline: none;
-      cursor: pointer;
-      width: 100%;
-    }
-    .actions {
-      margin-top: 1.5rem;
-      display: flex;
-      gap: 0.75rem;
-      align-items: center;
-    }
-    .btn-speak {
-      flex: 1;
-      background: var(--accent);
-      color: #0d0d0d;
-      border: none;
-      border-radius: 4px;
-      padding: 0.85rem 1.5rem;
-      font-family: 'DM Mono', monospace;
-      font-size: 0.85rem;
-      font-weight: 500;
-      letter-spacing: 0.06em;
-      cursor: pointer;
-      transition: opacity 0.15s, transform 0.1s;
-      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
-    }
-    .btn-speak:hover { opacity: 0.88; }
-    .btn-speak:active { transform: scale(0.98); }
-    .btn-speak:disabled { opacity: 0.4; cursor: not-allowed; }
-
-    .btn-stop {
-      background: transparent;
-      border: 1px solid var(--border);
-      color: var(--muted);
-      border-radius: 4px;
-      padding: 0.85rem 1rem;
-      font-family: 'DM Mono', monospace;
-      font-size: 0.8rem;
-      cursor: pointer;
-      transition: border-color 0.2s, color 0.2s;
-    }
-    .btn-stop:hover { border-color: #ff5555; color: #ff5555; }
-
-    /* Audio player */
-    .audio-wrap {
-      margin-top: 1.5rem;
-      display: none;
-    }
-    .audio-wrap.visible { display: block; }
-    audio {
-      width: 100%;
-      filter: invert(1) hue-rotate(180deg);
-      border-radius: 4px;
+      width: 100%; background: #faf9f7; border: 1px solid var(--border);
+      color: var(--text); font-family: 'Instrument Sans', sans-serif; font-size: 0.82rem;
+      padding: 0.55rem 0.7rem; border-radius: 8px; outline: none; cursor: pointer;
+      margin-bottom: 1.25rem; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a8478' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 0.7rem center;
     }
 
-    /* Waveform */
+    input[type="range"] { width: 100%; accent-color: var(--accent); margin-bottom: 1.25rem; }
+
+    .progress-wrap { background: var(--border); border-radius: 99px; height: 3px; margin-bottom: 0.35rem; }
+    .progress-fill { height: 100%; background: var(--accent); width: 0%; border-radius: 99px; transition: width 0.3s; }
+    .progress-label { font-size: 0.67rem; color: var(--muted); text-align: center; margin-bottom: 0.75rem; }
+
     .waveform {
-      margin-top: 1rem;
-      height: 40px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 3px;
-      opacity: 0;
-      transition: opacity 0.3s;
+      display: flex; align-items: center; justify-content: center; gap: 2px;
+      height: 24px; opacity: 0; transition: opacity 0.3s; margin-bottom: 0.5rem;
     }
     .waveform.active { opacity: 1; }
-    .bar {
-      width: 3px; background: var(--accent); border-radius: 99px;
-      height: 4px; animation: wave 1s ease-in-out infinite;
-    }
-    .bar:nth-child(1)  { animation-delay: 0.00s; }
-    .bar:nth-child(2)  { animation-delay: 0.07s; }
-    .bar:nth-child(3)  { animation-delay: 0.14s; }
-    .bar:nth-child(4)  { animation-delay: 0.21s; }
-    .bar:nth-child(5)  { animation-delay: 0.28s; }
-    .bar:nth-child(6)  { animation-delay: 0.35s; }
-    .bar:nth-child(7)  { animation-delay: 0.42s; }
-    .bar:nth-child(8)  { animation-delay: 0.49s; }
-    .bar:nth-child(9)  { animation-delay: 0.56s; }
-    .bar:nth-child(10) { animation-delay: 0.63s; }
-    .bar:nth-child(11) { animation-delay: 0.56s; }
-    .bar:nth-child(12) { animation-delay: 0.49s; }
-    .bar:nth-child(13) { animation-delay: 0.42s; }
-    .bar:nth-child(14) { animation-delay: 0.35s; }
-    .bar:nth-child(15) { animation-delay: 0.28s; }
-    @keyframes wave {
-      0%, 100% { height: 4px; }
-      50% { height: 28px; }
-    }
+    .wbar { width: 2px; background: var(--accent); border-radius: 99px; height: 3px; animation: wv 0.9s ease-in-out infinite; }
+    .wbar:nth-child(1){animation-delay:0.00s}.wbar:nth-child(2){animation-delay:0.08s}
+    .wbar:nth-child(3){animation-delay:0.16s}.wbar:nth-child(4){animation-delay:0.24s}
+    .wbar:nth-child(5){animation-delay:0.32s}.wbar:nth-child(6){animation-delay:0.40s}
+    .wbar:nth-child(7){animation-delay:0.48s}.wbar:nth-child(8){animation-delay:0.40s}
+    .wbar:nth-child(9){animation-delay:0.32s}.wbar:nth-child(10){animation-delay:0.24s}
+    @keyframes wv { 0%,100%{height:3px} 50%{height:16px} }
 
-    .status {
-      font-size: 0.7rem; color: var(--muted);
-      letter-spacing: 0.06em; text-align: center;
-      margin-top: 0.75rem; min-height: 1rem;
-    }
-    .status.generating { color: var(--accent); }
-    .status.error { color: #ff5555; }
+    .status { font-size: 0.7rem; color: var(--muted); text-align: center; min-height: 1rem; margin-bottom: 1rem; }
+    .status.active { color: var(--accent); }
+    .status.error { color: #c0392b; }
 
-    .badge {
-      display: inline-block;
-      background: var(--accent-dim, rgba(232,255,71,0.1));
-      color: var(--accent);
-      border: 1px solid rgba(232,255,71,0.3);
-      border-radius: 99px;
-      font-size: 0.6rem;
-      letter-spacing: 0.1em;
-      padding: 0.15rem 0.6rem;
-      margin-left: 0.5rem;
-      vertical-align: middle;
-      text-transform: uppercase;
+    .controls { display: flex; gap: 0.5rem; margin-top: auto; }
+    .btn-play {
+      flex: 1; background: var(--accent); color: white; border: none; border-radius: 8px;
+      padding: 0.75rem; font-family: 'Instrument Sans', sans-serif; font-size: 0.83rem;
+      font-weight: 500; cursor: pointer; transition: opacity 0.15s;
+      display: flex; align-items: center; justify-content: center; gap: 0.4rem;
     }
+    .btn-play:hover { opacity: 0.88; }
+    .btn-play:disabled { opacity: 0.35; cursor: not-allowed; }
+    .btn-icon {
+      background: transparent; border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.75rem 0.9rem; cursor: pointer; color: var(--muted); font-size: 0.95rem;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .btn-icon:hover { border-color: var(--text); color: var(--text); }
 
-    footer { margin-top: 2rem; font-size: 0.65rem; color: #333; letter-spacing: 0.08em; text-align: center; }
+    /* READER */
+    .reader { padding: 3.5rem 5vw; overflow-y: auto; max-height: 100vh; }
+    .reader-empty {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 100%; color: var(--muted); text-align: center; gap: 1rem;
+    }
+    .reader-empty-icon { font-size: 3.5rem; opacity: 0.25; }
+    .reader-empty p { font-size: 0.88rem; max-width: 260px; line-height: 1.65; }
+
+    .reader-content {
+      max-width: 660px; margin: 0 auto;
+      font-family: 'Instrument Serif', serif;
+      font-size: clamp(1.1rem, 1.8vw, 1.3rem);
+      line-height: 1.9; color: var(--text);
+    }
+    .sentence { display: inline; padding: 1px 0; border-radius: 3px; transition: background 0.15s; cursor: pointer; }
+    .sentence:hover { background: rgba(200,75,47,0.07); }
+    .sentence.active { background: #fff3c4; box-shadow: 0 0 0 4px #fff3c4; border-radius: 4px; }
+    .sentence.done { color: var(--done); }
+
+    @media (max-width: 720px) {
+      body { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+      .panel { position: relative; height: auto; max-height: 55vh; }
+      .reader { max-height: none; }
+    }
   </style>
 </head>
 <body>
-<div class="container">
-  <header>
-    <div class="logo">Speak<span>It</span> <span class="badge">Kokoro</span></div>
-    <div class="tagline">Local neural text-to-speech · GPU accelerated</div>
-  </header>
 
-  <div class="card">
-    <textarea id="textInput" placeholder="Paste or type any text here and hit Generate...&#10;&#10;Powered by Kokoro TTS — running locally on your GPU."></textarea>
-    <div class="char-count"><span id="charCount">0</span> characters</div>
+<aside class="panel">
+  <div class="logo">Speak<em>It</em></div>
+  <div class="tagline">Live Neural Reader · Kokoro TTS</div>
 
-    <div class="controls">
-      <div class="control-group" style="grid-column: span 2;">
-        <label>Voice</label>
-        <select id="voiceSelect">
-          <option value="">Loading voices...</option>
-        </select>
-      </div>
-      <div class="control-group">
-        <label>Speed — <span class="range-val" id="speedVal">1.0x</span></label>
-        <input type="range" id="speedRange" min="0.5" max="2" step="0.05" value="1.0"/>
-      </div>
-      <div class="control-group" style="display:flex; flex-direction:column; justify-content:flex-end;">
-        <!-- spacer -->
-      </div>
-    </div>
-
-    <div class="actions">
-      <button class="btn-speak" id="speakBtn">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
-        Generate Speech
-      </button>
-      <button class="btn-stop" id="stopBtn">■ Stop</button>
-    </div>
-
-    <div class="waveform" id="waveform">
-      <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-      <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-      <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-      <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-      <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-    </div>
-
-    <div class="audio-wrap" id="audioWrap">
-      <audio id="audioPlayer" controls></audio>
-    </div>
-
-    <div class="status" id="status">Ready.</div>
+  <div class="upload-zone" id="uploadZone">
+    <input type="file" id="fileInput" accept=".pdf"/>
+    <div class="upload-icon">📄</div>
+    <p><strong>Drop PDF here</strong> or click to browse</p>
   </div>
 
-  <footer>SPEAKIT · KOKORO TTS · LOCAL GPU · NO API KEYS</footer>
-</div>
+  <div class="divider">or paste text</div>
+
+  <textarea id="textInput" placeholder="Paste any text here..."></textarea>
+
+  <div class="label">Voice</div>
+  <select id="voiceSelect"><option>Loading voices...</option></select>
+
+  <div class="label">Speed <span id="speedVal">1.0×</span></div>
+  <input type="range" id="speedRange" min="0.5" max="2" step="0.05" value="1.0"/>
+
+  <div class="progress-wrap"><div class="progress-fill" id="progressFill"></div></div>
+  <div class="progress-label" id="progressLabel">—</div>
+
+  <div class="waveform" id="waveform">
+    <div class="wbar"></div><div class="wbar"></div><div class="wbar"></div>
+    <div class="wbar"></div><div class="wbar"></div><div class="wbar"></div>
+    <div class="wbar"></div><div class="wbar"></div><div class="wbar"></div>
+    <div class="wbar"></div>
+  </div>
+
+  <div class="status" id="status">Upload a PDF or type text to begin.</div>
+
+  <div class="controls">
+    <button class="btn-play" id="playBtn">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+      Read Aloud
+    </button>
+    <button class="btn-icon" id="pauseBtn" title="Pause/Resume">⏸</button>
+    <button class="btn-icon" id="stopBtn" title="Stop">■</button>
+  </div>
+</aside>
+
+<main class="reader">
+  <div class="reader-empty" id="readerEmpty">
+    <div class="reader-empty-icon">📖</div>
+    <p>Upload a PDF or paste text — each sentence will highlight as it's read aloud.</p>
+  </div>
+  <div class="reader-content" id="readerContent" style="display:none;"></div>
+</main>
 
 <script>
-  const textInput  = document.getElementById('textInput');
-  const voiceSelect = document.getElementById('voiceSelect');
-  const speedRange  = document.getElementById('speedRange');
-  const speakBtn    = document.getElementById('speakBtn');
-  const stopBtn     = document.getElementById('stopBtn');
-  const waveform    = document.getElementById('waveform');
-  const audioWrap   = document.getElementById('audioWrap');
-  const audioPlayer = document.getElementById('audioPlayer');
-  const status      = document.getElementById('status');
-  const charCount   = document.getElementById('charCount');
-
+  let sentences = [];
+  let currentIdx = 0;
+  let isPlaying = false;
+  let isPaused = false;
+  let stopRequested = false;
   let abortController = null;
+  let audioCtx = null;
+  let currentSource = null;
 
-  // Load voices from backend
-  async function loadVoices() {
-    try {
-      const res = await fetch('/voices');
-      const voices = await res.json();
-      voiceSelect.innerHTML = '';
-      for (const [id, label] of Object.entries(voices)) {
-        const opt = document.createElement('option');
-        opt.value = id;
-        opt.textContent = label;
-        voiceSelect.appendChild(opt);
-      }
-    } catch(e) {
-      setStatus('Could not load voices — is the server running?', 'error');
+  const $ = id => document.getElementById(id);
+  const fileInput     = $('fileInput');
+  const uploadZone    = $('uploadZone');
+  const textInput     = $('textInput');
+  const voiceSelect   = $('voiceSelect');
+  const speedRange    = $('speedRange');
+  const speedValEl    = $('speedVal');
+  const playBtn       = $('playBtn');
+  const pauseBtn      = $('pauseBtn');
+  const stopBtn       = $('stopBtn');
+  const waveform      = $('waveform');
+  const progressFill  = $('progressFill');
+  const progressLabel = $('progressLabel');
+  const statusEl      = $('status');
+  const readerEmpty   = $('readerEmpty');
+  const readerContent = $('readerContent');
+
+  fetch('/voices').then(r => r.json()).then(voices => {
+    voiceSelect.innerHTML = '';
+    for (const [id, label] of Object.entries(voices)) {
+      const o = document.createElement('option');
+      o.value = id; o.textContent = label;
+      voiceSelect.appendChild(o);
     }
-  }
-  loadVoices();
-
-  textInput.addEventListener('input', () => charCount.textContent = textInput.value.length);
-  speedRange.addEventListener('input', () => {
-    document.getElementById('speedVal').textContent = parseFloat(speedRange.value).toFixed(2) + 'x';
   });
 
-  function setStatus(msg, type = '') {
-    status.textContent = msg;
-    status.className = 'status' + (type ? ' ' + type : '');
+  speedRange.addEventListener('input', () => {
+    speedValEl.textContent = parseFloat(speedRange.value).toFixed(2) + '×';
+  });
+
+  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+  uploadZone.addEventListener('drop', e => { e.preventDefault(); uploadZone.classList.remove('dragover'); if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+  fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+
+  async function handleFile(file) {
+    setStatus('Extracting text...', 'active');
+    const form = new FormData();
+    form.append('file', file);
+    try {
+      const res = await fetch('/upload-pdf', { method: 'POST', body: form });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.detail); }
+      const data = await res.json();
+      loadSentences(data.sentences);
+      uploadZone.innerHTML = `<div class="upload-icon">✅</div><p><strong>${file.name}</strong></p><p style="font-size:0.7rem;margin-top:0.2rem">${sentences.length} sentences loaded</p>`;
+      setStatus(`Ready — ${sentences.length} sentences.`);
+    } catch(e) { setStatus('Error: ' + e.message, 'error'); }
   }
 
-  speakBtn.addEventListener('click', async () => {
-    const text = textInput.value.trim();
-    if (!text) { setStatus('⚠ Please enter some text first.'); return; }
+  let debounceTimer;
+  textInput.addEventListener('input', () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(async () => {
+      const text = textInput.value.trim();
+      if (!text) return;
+      const res = await fetch('/split', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ text }) });
+      const data = await res.json();
+      loadSentences(data.sentences);
+      setStatus(`${sentences.length} sentences ready.`);
+    }, 500);
+  });
 
-    abortController = new AbortController();
-    speakBtn.disabled = true;
+  function loadSentences(arr) {
+    sentences = arr;
+    currentIdx = 0;
+    readerEmpty.style.display = 'none';
+    readerContent.style.display = 'block';
+    readerContent.innerHTML = sentences.map((s, i) =>
+      `<span class="sentence" id="s${i}" data-idx="${i}">${s} </span>`
+    ).join('');
+    readerContent.querySelectorAll('.sentence').forEach(el => {
+      el.addEventListener('click', () => { if (isPlaying) jumpTo(parseInt(el.dataset.idx)); });
+    });
+    progressFill.style.width = '0%';
+    progressLabel.textContent = `0 / ${sentences.length}`;
+  }
+
+  function highlight(idx) {
+    readerContent.querySelectorAll('.sentence').forEach((el, i) => {
+      el.className = 'sentence' + (i < idx ? ' done' : i === idx ? ' active' : '');
+    });
+    const el = document.getElementById('s' + idx);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const pct = sentences.length ? Math.round(((idx + 1) / sentences.length) * 100) : 0;
+    progressFill.style.width = pct + '%';
+    progressLabel.textContent = `${idx + 1} / ${sentences.length}`;
+  }
+
+  async function playFrom(startIdx) {
+    isPlaying = true; isPaused = false; stopRequested = false;
+    playBtn.disabled = true;
     waveform.classList.add('active');
-    audioWrap.classList.remove('visible');
-    setStatus('Generating audio...', 'generating');
 
-    try {
-      const res = await fetch('/speak', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text,
-          voice: voiceSelect.value,
-          speed: parseFloat(speedRange.value),
-        }),
-        signal: abortController.signal,
-      });
+    for (let i = startIdx; i < sentences.length; i++) {
+      if (stopRequested) break;
+      while (isPaused && !stopRequested) await sleep(80);
+      if (stopRequested) break;
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || 'Server error');
+      currentIdx = i;
+      highlight(i);
+      setStatus(`Sentence ${i + 1} of ${sentences.length}`, 'active');
+
+      try {
+        abortController = new AbortController();
+        const res = await fetch('/speak', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: sentences[i], voice: voiceSelect.value, speed: parseFloat(speedRange.value) }),
+          signal: abortController.signal
+        });
+        if (!res.ok) continue;
+        const buf = await res.arrayBuffer();
+        if (stopRequested) break;
+        await playBuffer(buf);
+      } catch(e) {
+        if (e.name !== 'AbortError') console.error(e);
+        break;
       }
+    }
 
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      audioPlayer.src = url;
-      audioWrap.classList.add('visible');
-      audioPlayer.play();
-      setStatus('Done! Playing audio.');
-    } catch(e) {
-      if (e.name === 'AbortError') {
-        setStatus('Cancelled.');
-      } else {
-        setStatus('Error: ' + e.message, 'error');
-      }
-    } finally {
-      speakBtn.disabled = false;
-      waveform.classList.remove('active');
-      abortController = null;
+    if (!stopRequested) {
+      readerContent.querySelectorAll('.sentence').forEach(el => el.className = 'sentence done');
+      progressFill.style.width = '100%';
+      progressLabel.textContent = `${sentences.length} / ${sentences.length}`;
+      setStatus('Finished reading.');
+    }
+
+    isPlaying = false;
+    playBtn.disabled = false;
+    waveform.classList.remove('active');
+  }
+
+  function playBuffer(arrayBuffer) {
+    return new Promise((resolve, reject) => {
+      if (!audioCtx || audioCtx.state === 'closed') audioCtx = new AudioContext();
+      audioCtx.decodeAudioData(arrayBuffer.slice(0), buf => {
+        currentSource = audioCtx.createBufferSource();
+        currentSource.buffer = buf;
+        currentSource.connect(audioCtx.destination);
+        currentSource.onended = resolve;
+        currentSource.start(0);
+      }, reject);
+    });
+  }
+
+  function jumpTo(idx) {
+    stopRequested = false;
+    currentIdx = idx;
+    if (currentSource) { try { currentSource.stop(); currentSource.onended = null; } catch(e){} }
+    if (abortController) abortController.abort();
+  }
+
+  playBtn.addEventListener('click', () => {
+    if (!sentences.length) { setStatus('No text loaded yet.', 'error'); return; }
+    if (isPlaying) return;
+    playFrom(currentIdx);
+  });
+
+  pauseBtn.addEventListener('click', () => {
+    if (!isPlaying) return;
+    if (isPaused) {
+      isPaused = false;
+      pauseBtn.textContent = '⏸';
+      if (audioCtx?.state === 'suspended') audioCtx.resume();
+      setStatus('Resuming...', 'active');
+    } else {
+      isPaused = true;
+      pauseBtn.textContent = '▶';
+      if (audioCtx) audioCtx.suspend();
+      setStatus('Paused.');
     }
   });
 
   stopBtn.addEventListener('click', () => {
+    stopRequested = true; isPlaying = false; isPaused = false;
+    if (currentSource) { try { currentSource.stop(); currentSource.onended = null; } catch(e){} }
     if (abortController) abortController.abort();
-    audioPlayer.pause();
-    audioPlayer.currentTime = 0;
+    currentIdx = 0;
+    playBtn.disabled = false;
     waveform.classList.remove('active');
-    speakBtn.disabled = false;
+    pauseBtn.textContent = '⏸';
+    progressFill.style.width = '0%';
+    progressLabel.textContent = '—';
     setStatus('Stopped.');
+    readerContent.querySelectorAll('.sentence').forEach(el => el.className = 'sentence');
   });
+
+  function setStatus(msg, type = '') {
+    statusEl.textContent = msg;
+    statusEl.className = 'status' + (type ? ' ' + type : '');
+  }
+
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 </script>
 </body>
 </html>
